@@ -64,7 +64,7 @@ h2 { margin: 8px 0 0; font: 700 22px Manrope, sans-serif; letter-spacing: -.6px;
 .watch-link:hover { background: #f4f2ff; }
 .watch-link[aria-pressed="true"] { border-color: #c7c2f4; background: #f4f2ff; }
 
-.player-panel { position: sticky; top: 24px; align-self: start; width: 100%; min-width: 0; padding: 0; }
+.player-panel { position: sticky; top: 24px; align-self: start; justify-self: end; width: min(100%, 460px); min-width: 0; padding: 0; }
 .player-heading { display: flex; align-items: end; justify-content: space-between; gap: 12px; margin-bottom: 13px; }
 .player-heading h2 { overflow: hidden; max-width: 100%; font-size: 15px; text-overflow: ellipsis; white-space: nowrap; }
 .player-heading .timestamp { flex: 0 0 auto; margin: 0 0 1px; }

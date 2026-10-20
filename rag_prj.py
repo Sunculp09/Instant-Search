@@ -19,7 +19,7 @@ from vector_store import COLLECTION, get_qdrant_client
 
 
 ROOT = Path(__file__).resolve().parent
-EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
+EMBEDDING_MODEL = "intfloat/multilingual-e5-small"
 QUERY_STOP_WORDS = {
     "a", "an", "and", "are", "at", "does", "find", "for", "from", "how", "in",
     "is", "me", "of", "on", "or", "please", "show", "tell", "that", "the", "this",
@@ -63,12 +63,12 @@ def retrieve(question: str, limit: int = 5) -> list[dict[str, Any]]:
         raise RuntimeError("Vector collection not found. Run create_vector_db.py first.")
 
     if uses_qdrant_cloud_inference():
-        query_vector = models.Document(text=question, model=EMBEDDING_MODEL)
+        query_vector = models.Document(text=f"query: {question}", model=EMBEDDING_MODEL)
     else:
         from fastembed import TextEmbedding
 
         embedder = TextEmbedding(model_name=EMBEDDING_MODEL)
-        query_vector = next(embedder.embed([question])).tolist()
+        query_vector = next(embedder.embed([f"query: {question}"])).tolist()
     results = db.query_points(
         collection_name=COLLECTION,
         query=query_vector,
@@ -187,7 +187,7 @@ def answer_with_sources(question: str, limit: int = 5) -> dict[str, Any]:
             {
                 "role": "system",
                 "content": (
-                    "Answer the user's statement or question briefly using only the caption context. "
+                    "Answer briefly in the same language as the user's question, using only the caption context. "
                     "Cite useful transcript chunks by bracket number, such as [1]. Distinguish "
                     "a passing mention of a topic from an explanation of it. If the captions only "
                     "mention the topic, say so in one short sentence. If they explain it, state "

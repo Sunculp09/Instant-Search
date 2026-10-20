@@ -12,8 +12,8 @@ from qdrant_client import QdrantClient
 
 ROOT = Path(__file__).resolve().parent
 QDRANT_DIR = ROOT / "data" / "qdrant"
-# The cloud deployment uses this collection for all-MiniLM-L6-v2 vectors.
-COLLECTION = "playlist_transcripts_minilm_v1"
+# E5 vectors must use their own collection, separate from the old MiniLM vectors.
+COLLECTION = "playlist_transcripts_multilingual_e5_small_v1"
 
 
 def get_qdrant_client() -> QdrantClient:

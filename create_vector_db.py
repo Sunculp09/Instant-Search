@@ -17,7 +17,7 @@ from vector_store import COLLECTION, QDRANT_DIR, get_qdrant_client
 
 ROOT = Path(__file__).resolve().parent
 KNOWLEDGE_FILE = ROOT / "knowledge.json"
-EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
+EMBEDDING_MODEL = "intfloat/multilingual-e5-small"
 EMBEDDING_SIZE = 384
 BATCH_SIZE = 64
 
@@ -104,11 +104,11 @@ def create_vector_db(rebuild: bool = False) -> None:
         batch = records_to_add[offset : offset + BATCH_SIZE]
         if use_cloud_inference:
             vectors = [
-                models.Document(text=record["text"], model=EMBEDDING_MODEL)
+                models.Document(text=f"passage: {record['text']}", model=EMBEDDING_MODEL)
                 for record in batch
             ]
         else:
-            vectors = list(embedder.embed([record["text"] for record in batch]))
+            vectors = list(embedder.embed([f"passage: {record['text']}" for record in batch]))
         points = [
             models.PointStruct(
                 id=next_point_id + offset + index,

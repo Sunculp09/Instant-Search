@@ -8,7 +8,7 @@ This project has three parts:
 | `api.py` | Render | Receives searches, looks up transcript chunks, and asks Groq to answer |
 | Qdrant Cloud | Qdrant | Stores the transcript vectors used for similarity search |
 
-The existing `data/qdrant` folder is a local development database. Render cannot use that folder as its permanent production database, so production uses Qdrant Cloud. The backend uses Qdrant Cloud Inference with the free `sentence-transformers/all-MiniLM-L6-v2` model; the Render service does not load a PyTorch embedding model.
+The existing `data/qdrant` folder is a local development database. Render cannot use that folder as its permanent production database, so production uses Qdrant Cloud. The backend uses Qdrant Cloud Inference with the free `intfloat/multilingual-e5-small` model and matching query/passage prefixes; the Render service does not load a PyTorch embedding model.
 
 ## Before deployment
 

@@ -9,6 +9,7 @@ const status = document.querySelector("#status");
 const results = document.querySelector("#results");
 const sourceList = document.querySelector("#sources");
 const sourceCount = document.querySelector("#source-count");
+const searchMessage = document.querySelector("#search-message");
 const videoPlayer = document.querySelector("#video-player");
 const playerTitle = document.querySelector("#player-title");
 const playerTime = document.querySelector("#player-time");
@@ -117,6 +118,8 @@ form.addEventListener("submit", async (event) => {
     if (!response.ok) throw new Error(data.detail || "The search request failed.");
 
     renderSources(data.sources || []);
+    searchMessage.textContent = data.sources?.length ? "" : (data.answer || "Please ask anything about DSA playlist.");
+    searchMessage.hidden = Boolean(data.sources?.length);
     results.hidden = false;
     status.textContent = "";
     status.className = "status";

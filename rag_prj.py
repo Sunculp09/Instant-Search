@@ -20,6 +20,7 @@ from vector_store import COLLECTION, get_qdrant_client
 
 ROOT = Path(__file__).resolve().parent
 EMBEDDING_MODEL = "intfloat/multilingual-e5-small"
+OUT_OF_SCOPE_RESPONSE = "Please ask anything about DSA playlist."
 QUERY_STOP_WORDS = {
     "a", "an", "and", "are", "at", "does", "find", "for", "from", "how", "in",
     "is", "me", "of", "on", "or", "please", "show", "tell", "that", "the", "this",
@@ -170,16 +171,6 @@ def retrieve(question: str, limit: int = 5) -> list[dict[str, Any]]:
 
 def answer_with_sources(question: str, limit: int = 5) -> dict[str, Any]:
     matches = retrieve(question, limit)
-    if not matches:
-        return {
-            "answer": (
-                "No relevant clip matched the indexed captions. The current index "
-                "covers 98 playlist videos, so this topic may be in a video whose "
-                "transcript is not indexed."
-            ),
-            "sources": [],
-        }
-
     load_dotenv(ROOT / ".env")
     api_key = os.getenv("GROQ_API_KEY")
     if not api_key:
@@ -197,7 +188,14 @@ def answer_with_sources(question: str, limit: int = 5) -> dict[str, Any]:
             {
                 "role": "system",
                 "content": (
-                    "Answer briefly in the same language as the user's question, using only the caption context. "
+                    "First decide whether the user's request is about data structures and algorithms (DSA), "
+                    "programming, coding interview problems, or finding where one of those is discussed in "
+                    "this DSA playlist. This includes questions in any language. If the request is unrelated "
+                    "to those subjects (for example, an animal or weather question) or is meaningless repeated "
+                    "gibberish, output exactly: 'Please ask anything about DSA playlist.' and nothing else. "
+                    "Do not treat a coincidental word in a caption as proof that an unrelated request is in scope. "
+                    "For an in-scope request, answer briefly in the same language as the user's question, using "
+                    "only the caption context. "
                     "Cite useful transcript chunks by bracket number, such as [1]. Distinguish "
                     "a passing mention of a topic from an explanation of it. If the captions only "
                     "mention the topic, say so in one short sentence. If they explain it, state "
@@ -209,6 +207,8 @@ def answer_with_sources(question: str, limit: int = 5) -> dict[str, Any]:
         ],
     )
     answer = response.choices[0].message.content or "I could not find a supported answer."
+    if answer.strip().casefold().rstrip(".!? ") == OUT_OF_SCOPE_RESPONSE.casefold().rstrip(".!? "):
+        return {"answer": OUT_OF_SCOPE_RESPONSE, "sources": []}
     sources = [
         {
             "video_title": item["video_title"],

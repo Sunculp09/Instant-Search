@@ -10,10 +10,10 @@ const results = document.querySelector("#results");
 const answerText = document.querySelector("#answer-text");
 const sourceList = document.querySelector("#sources");
 const sourceCount = document.querySelector("#source-count");
-const playerPanel = document.querySelector("#player-panel");
 const videoPlayer = document.querySelector("#video-player");
 const playerTitle = document.querySelector("#player-title");
 const playerTime = document.querySelector("#player-time");
+const playerPlaceholder = document.querySelector("#player-placeholder");
 
 function getVideoId(source) {
   if (source.video_id) return source.video_id;
@@ -31,12 +31,12 @@ function getStartSeconds(source) {
     const seconds = time?.match(/^(\d+)s?$/);
     if (seconds) return Number(seconds[1]);
   } catch {
-    // Fall back to the displayed timestamp below.
+    // Use the displayed timestamp if the URL has no start time.
   }
   return (source.timestamp || "0:0:0").split(":").reduce((total, part) => total * 60 + (Number(part) || 0), 0);
 }
 
-function selectSource(source, selectedButton, { scrollToPlayer = false } = {}) {
+function selectSource(source, selectedButton) {
   const videoId = getVideoId(source);
   if (!videoId || !/^[\w-]{11}$/.test(videoId)) {
     status.textContent = "This result does not include a playable YouTube video.";
@@ -45,19 +45,18 @@ function selectSource(source, selectedButton, { scrollToPlayer = false } = {}) {
   }
 
   const startSeconds = getStartSeconds(source);
-  videoPlayer.src = `https://www.youtube-nocookie.com/embed/${videoId}?start=${startSeconds}&autoplay=1&mute=1&playsinline=1&rel=0`;
+  // This is called only from a user's result click, so playback never starts
+  // when the page loads or when a search merely returns its suggestions.
+  videoPlayer.src = `https://www.youtube-nocookie.com/embed/${videoId}?start=${startSeconds}&autoplay=1&playsinline=1&rel=0`;
   videoPlayer.title = source.video_title || "Matching YouTube video";
   playerTitle.textContent = source.video_title || "Playlist video";
   playerTime.textContent = source.timestamp || "";
-  playerPanel.hidden = false;
+  playerPlaceholder.hidden = true;
   sourceList.querySelectorAll(".watch-link").forEach((button) => {
     const isSelected = button === selectedButton;
-    button.textContent = isSelected ? "Playing here" : "Play here";
+    button.textContent = isSelected ? "Playing" : "Play here";
     button.setAttribute("aria-pressed", String(isSelected));
   });
-  if (scrollToPlayer) {
-    playerPanel.scrollIntoView({ behavior: "smooth", block: "center" });
-  }
 }
 
 function renderSources(sources = []) {
@@ -87,7 +86,7 @@ function renderSources(sources = []) {
     link.textContent = "Play here";
     link.setAttribute("aria-label", `Play ${source.video_title || "video"} here at ${source.timestamp || "the relevant moment"}`);
     link.setAttribute("aria-pressed", "false");
-    link.addEventListener("click", () => selectSource(source, link, { scrollToPlayer: true }));
+    link.addEventListener("click", () => selectSource(source, link));
 
     card.append(number, details, link);
     sourceList.append(card);
@@ -100,10 +99,14 @@ form.addEventListener("submit", async (event) => {
   if (!statement) return;
 
   submitButton.disabled = true;
-  submitButton.querySelector("span").textContent = "Searching…";
-  status.textContent = "Looking through the playlist captions…";
+  submitButton.querySelector("span").textContent = "Searching...";
+  status.textContent = "Looking through the playlist captions...";
   status.className = "status is-loading";
   results.hidden = true;
+  videoPlayer.removeAttribute("src");
+  playerPlaceholder.hidden = false;
+  playerTitle.textContent = "Choose a suggested video";
+  playerTime.textContent = "";
 
   try {
     const response = await fetch(`${API_URL}/ask`, {
@@ -115,12 +118,8 @@ form.addEventListener("submit", async (event) => {
     if (!response.ok) throw new Error(data.detail || "The search request failed.");
 
     answerText.textContent = data.answer || "No answer was returned.";
-    const sources = data.sources || [];
-    renderSources(sources);
+    renderSources(data.sources || []);
     results.hidden = false;
-    playerPanel.hidden = true;
-    videoPlayer.src = "";
-    if (sources.length) selectSource(sources[0], sourceList.querySelector(".watch-link"));
     status.textContent = "";
     status.className = "status";
   } catch (error) {

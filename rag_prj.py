@@ -20,7 +20,6 @@ from vector_store import COLLECTION, get_qdrant_client
 
 ROOT = Path(__file__).resolve().parent
 EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
-MIN_RELEVANCE_SCORE = 0.52
 QUERY_STOP_WORDS = {
     "a", "an", "and", "are", "at", "does", "find", "for", "from", "how", "in",
     "is", "me", "of", "on", "or", "please", "show", "tell", "that", "the", "this",
@@ -80,13 +79,26 @@ def retrieve(question: str, limit: int = 5) -> list[dict[str, Any]]:
     semantic_matches = [
         {**(point.payload or {}), "score": point.score}
         for point in results
-        if point.payload and point.score >= MIN_RELEVANCE_SCORE
+        if point.payload
     ]
 
-    # Vector similarity can miss a rare but important exact topic phrase. Search
-    # the local transcript source for exact two-word phrases and prefer those
-    # clips when present, while keeping vector search for paraphrases.
+    # Narrow to an episode only when the user explicitly names one.
+    episode = re.search(r"\b(?:episode|ep)\s*#?\s*(\d+)\b", question, re.IGNORECASE)
+    episode_title = (
+        re.compile(rf"\bepisode\s*{episode.group(1)}\b", re.IGNORECASE)
+        if episode else None
+    )
+    if episode_title:
+        semantic_matches = [
+            item for item in semantic_matches
+            if episode_title.search(str(item.get("video_title", "")))
+        ]
+
+    # Search captions and titles for exact phrases as well as using vector
+    # matches. Titles let users target a specific episode directly.
     phrases = exact_query_phrases(question)
+    if episode_title and not phrases:
+        phrases = [f"episode {episode.group(1)}"]
     if not phrases:
         return semantic_matches[:limit]
 
@@ -94,10 +106,19 @@ def retrieve(question: str, limit: int = 5) -> list[dict[str, Any]]:
         (item.get("video_id"), item.get("start_timestamp"), item.get("text")): item
         for item in semantic_matches
     }
+    query_terms = [
+        word for word in re.findall(r"[\w]+", question.casefold())
+        if word not in QUERY_STOP_WORDS and len(word) > 1
+    ]
+    broad_topic_query = len(query_terms) <= 2
+    teaching_cues = ("intro", "introduction", "easy", "algorithm", "explanation", "explained", "basics", "course", "tutorial")
     phrase_matches: list[dict[str, Any]] = []
     for chunk in load_transcript_chunks():
         text = str(chunk.get("text", "")).casefold()
-        matching_phrases = [phrase for phrase in phrases if phrase in text]
+        title = str(chunk.get("video_title", "")).casefold()
+        if episode_title and not episode_title.search(str(chunk.get("video_title", ""))):
+            continue
+        matching_phrases = [phrase for phrase in phrases if phrase in text or phrase in title]
         if not matching_phrases:
             continue
         key = (chunk.get("video_id"), chunk.get("start_timestamp"), chunk.get("text"))
@@ -107,17 +128,33 @@ def retrieve(question: str, limit: int = 5) -> list[dict[str, Any]]:
                 **chunk,
                 "score": semantic_item.get("score", 0.0),
                 "_matched_phrase": max(matching_phrases, key=len),
+                "_body_match": any(phrase in text for phrase in phrases),
+                "_title_match": any(phrase in title for phrase in phrases),
+                "_teaching_title": broad_topic_query and any(cue in title for cue in teaching_cues),
             }
         )
 
     if phrase_matches:
-        phrase_matches = [
-            item for item in phrase_matches
-            if item["score"] >= MIN_RELEVANCE_SCORE
-        ]
-    if phrase_matches:
-        phrase_matches.sort(key=lambda item: (len(item["_matched_phrase"]), item["score"]), reverse=True)
-        return [{key: value for key, value in item.items() if key != "_matched_phrase"} for item in phrase_matches[:limit]]
+        phrase_matches.sort(
+            key=lambda item: (
+                item["_title_match"], item["_teaching_title"], item["_body_match"],
+                len(item["_matched_phrase"]), item["score"],
+            ),
+            reverse=True,
+        )
+        selected: list[dict[str, Any]] = []
+        per_video: dict[str, int] = {}
+        for item in phrase_matches:
+            video_id = str(item.get("video_id", item.get("video_title", "")))
+            if per_video.get(video_id, 0) >= 2:
+                continue
+            selected.append({key: value for key, value in item.items() if not key.startswith("_")})
+            per_video[video_id] = per_video.get(video_id, 0) + 1
+            if len(selected) >= limit:
+                break
+        return selected
+    if episode_title:
+        return semantic_matches[:limit]
     return semantic_matches[:limit]
 
 
@@ -127,7 +164,7 @@ def answer_with_sources(question: str, limit: int = 5) -> dict[str, Any]:
         return {
             "answer": (
                 "No relevant clip matched the indexed captions. The current index "
-                "covers 53 playlist videos, so this topic may be in a video whose "
+                "covers 98 playlist videos, so this topic may be in a video whose "
                 "transcript is not indexed."
             ),
             "sources": [],
@@ -150,11 +187,12 @@ def answer_with_sources(question: str, limit: int = 5) -> dict[str, Any]:
             {
                 "role": "system",
                 "content": (
-                    "Answer the user's statement or question using only the caption context. "
+                    "Answer the user's statement or question briefly using only the caption context. "
                     "Cite useful transcript chunks by bracket number, such as [1]. Distinguish "
                     "a passing mention of a topic from an explanation of it. If the captions only "
-                    "mention the topic, say that they mention it but do not explain it. If no "
-                    "caption is relevant, say you could not find it. Do not invent details."
+                    "mention the topic, say so in one short sentence. If they explain it, state "
+                    "what they explain in one short sentence. If no caption is relevant, say you "
+                    "could not find it. Do not invent details or add a long narrative."
                 ),
             },
             {"role": "user", "content": f"Caption context:\n{context}\n\nUser statement: {question}"},

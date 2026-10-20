@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f5f6fa" />
+    <meta name="description" content="Search playlist transcripts and jump to the video moment that answers your question." />
+    <title>PlaylistIndex — Find the moment</title>
+  </head>
+  <body>
+    <main class="page-shell">
+      <header class="topbar">
+        <a class="brand" href="/" aria-label="PlaylistIndex home">
+          <span class="brand-mark" aria-hidden="true">P</span>
+          <span>Playlist<span class="brand-light">Index</span></span>
+        </a>
+        <span class="top-note"><span class="status-dot" aria-hidden="true"></span> Transcript search</span>
+      </header>
+
+      <section class="hero" aria-labelledby="page-title">
+        <p class="eyebrow"><span class="eyebrow-line" aria-hidden="true"></span> YOUR VIDEO LIBRARY, SEARCHED</p>
+        <h1 id="page-title">Find the moment<br />that <span>matters.</span></h1>
+        <p class="intro">Describe a concept or question. Get the video and timestamp where it appears.</p>
+
+        <form id="ask-form" class="search-card">
+          <label for="statement">What are you looking for?</label>
+          <textarea id="statement" name="statement" rows="3" maxlength="2000"
+            placeholder="e.g. Where does the speaker explain binary search?" required></textarea>
+          <div class="form-bottom">
+            <span class="hint">Searches indexed playlist captions</span>
+            <button id="submit-button" type="submit">
+              <span>Find it</span>
+              <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h11M10 5l5 5-5 5" /></svg>
+            </button>
+          </div>
+        </form>
+        <p id="status" class="status" role="status" aria-live="polite"></p>
+      </section>
+
+      <section id="results" class="results" aria-label="Search results" hidden>
+        <div class="results-heading">
+          <div>
+            <p class="eyebrow"><span class="eyebrow-line" aria-hidden="true"></span> SEARCH RESULTS</p>
+            <h2>Here’s what we found</h2>
+          </div>
+          <span id="source-count" class="source-count"></span>
+        </div>
+        <article class="answer-card" aria-labelledby="answer-heading">
+          <h3 id="answer-heading" class="answer-label"><span class="sparkle" aria-hidden="true">✦</span> ANSWER</h3>
+          <p id="answer-text"></p>
+        </article>
+        <section id="player-panel" class="player-panel" aria-label="Video player" hidden>
+          <div class="player-heading">
+            <div>
+              <p class="eyebrow"><span class="eyebrow-line" aria-hidden="true"></span> PLAYING ON THIS PAGE</p>
+              <h3 id="player-title">Select a matching video</h3>
+            </div>
+            <span id="player-time" class="timestamp"></span>
+          </div>
+          <div class="video-frame">
+            <iframe id="video-player" title="Matching YouTube video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+          </div>
+          <p class="player-hint">Video starts muted. Use the speaker control in the player to turn sound on.</p>
+        </section>
+        <div id="sources" class="source-list" aria-label="Matching videos"></div>
+      </section>
+
+      <footer>
+        <span>PlaylistIndex</span>
+        <span>Answers grounded in your video transcripts</span>
+      </footer>
+    </main>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

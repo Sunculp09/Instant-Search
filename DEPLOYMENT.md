@@ -8,7 +8,7 @@ This project has three parts:
 | `api.py` | Render | Receives searches, looks up transcript chunks, and asks Groq to answer |
 | Qdrant Cloud | Qdrant | Stores the transcript vectors used for similarity search |
 
-The existing `data/qdrant` folder is a local development database. Render cannot use that folder as its permanent production database, so production needs Qdrant Cloud.
+The existing `data/qdrant` folder is a local development database. Render cannot use that folder as its permanent production database, so production uses Qdrant Cloud. The backend uses Qdrant Cloud Inference with the free `sentence-transformers/all-MiniLM-L6-v2` model; the Render service does not load a PyTorch embedding model.
 
 ## Before deployment
 
@@ -23,7 +23,7 @@ Keep secret keys in service environment settings or the local `.env` file. Never
 
 ## 1. Deploy the backend to Render
 
-Push this project to your Git provider. In Render, create a **Blueprint** from that repository; it will read `render.yaml`. The build installs the Python packages and indexes `knowledge.json` into Qdrant Cloud. The Qdrant URL and key must be available in Render during the build.
+Push this project to your Git provider. In Render, create a **Blueprint** from that repository; it will read `render.yaml` and use the free plan (512 MB RAM). The build installs the Python packages and indexes `knowledge.json` into Qdrant Cloud. The Qdrant URL and key must be available in Render during the build, and Cloud Inference must be enabled for the cluster.
 
 Set these values in the Render service environment:
 

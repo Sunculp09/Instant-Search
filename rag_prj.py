@@ -9,16 +9,17 @@ import re
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 from dotenv import load_dotenv
 from groq import Groq
-from sentence_transformers import SentenceTransformer
+from qdrant_client import models
 
 from vector_store import COLLECTION, get_qdrant_client
 
 
 ROOT = Path(__file__).resolve().parent
-EMBEDDING_MODEL = "paraphrase-multilingual-MiniLM-L12-v2"
+EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 QUERY_STOP_WORDS = {
     "a", "an", "and", "are", "at", "does", "find", "for", "from", "how", "in",
     "is", "me", "of", "on", "or", "please", "show", "tell", "that", "the", "this",
@@ -27,10 +28,12 @@ QUERY_STOP_WORDS = {
 }
 
 
-@lru_cache(maxsize=1)
-def get_embedder() -> SentenceTransformer:
-    """Load the embedding model once per process."""
-    return SentenceTransformer(EMBEDDING_MODEL)
+def uses_qdrant_cloud_inference() -> bool:
+    load_dotenv(ROOT / ".env")
+    if os.getenv("QDRANT_MODE", "auto").lower() == "local":
+        return False
+    host = urlparse(os.getenv("QDRANT_URL", "")).hostname or ""
+    return host.endswith(".cloud.qdrant.io")
 
 
 @lru_cache(maxsize=1)
@@ -59,7 +62,13 @@ def retrieve(question: str, limit: int = 5) -> list[dict[str, Any]]:
         db.close()
         raise RuntimeError("Vector collection not found. Run create_vector_db.py first.")
 
-    query_vector = get_embedder().encode(question, normalize_embeddings=True).tolist()
+    if uses_qdrant_cloud_inference():
+        query_vector = models.Document(text=question, model=EMBEDDING_MODEL)
+    else:
+        from fastembed import TextEmbedding
+
+        embedder = TextEmbedding(model_name=EMBEDDING_MODEL)
+        query_vector = next(embedder.embed([question])).tolist()
     results = db.query_points(
         collection_name=COLLECTION,
         query=query_vector,

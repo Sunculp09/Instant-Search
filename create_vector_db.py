@@ -1,4 +1,4 @@
-"""Create or update the local Qdrant vector database from knowledge.json."""
+"""Index knowledge.json in Qdrant Cloud or a local Qdrant database."""
 
 from __future__ import annotations
 
@@ -7,18 +7,27 @@ import json
 import os
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
+from dotenv import load_dotenv
 from qdrant_client import QdrantClient, models
-from sentence_transformers import SentenceTransformer
 
 from vector_store import COLLECTION, QDRANT_DIR, get_qdrant_client
 
 
 ROOT = Path(__file__).resolve().parent
 KNOWLEDGE_FILE = ROOT / "knowledge.json"
-EMBEDDING_MODEL = "paraphrase-multilingual-MiniLM-L12-v2"
+EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 EMBEDDING_SIZE = 384
 BATCH_SIZE = 64
+
+
+def uses_qdrant_cloud_inference() -> bool:
+    load_dotenv(ROOT / ".env")
+    if os.getenv("QDRANT_MODE", "auto").lower() == "local":
+        return False
+    host = urlparse(os.getenv("QDRANT_URL", "")).hostname or ""
+    return host.endswith(".cloud.qdrant.io")
 
 
 def read_knowledge() -> list[dict[str, Any]]:
@@ -84,15 +93,26 @@ def create_vector_db(rebuild: bool = False) -> None:
         return
 
     print(f"Embedding and indexing {len(records_to_add)} chunks...")
-    embedder = SentenceTransformer(EMBEDDING_MODEL)
+    use_cloud_inference = uses_qdrant_cloud_inference()
+    embedder = None
+    if not use_cloud_inference:
+        from fastembed import TextEmbedding
+
+        embedder = TextEmbedding(model_name=EMBEDDING_MODEL)
     next_point_id = db.count(collection_name=COLLECTION, exact=True).count
     for offset in range(0, len(records_to_add), BATCH_SIZE):
         batch = records_to_add[offset : offset + BATCH_SIZE]
-        vectors = embedder.encode([record["text"] for record in batch], normalize_embeddings=True)
+        if use_cloud_inference:
+            vectors = [
+                models.Document(text=record["text"], model=EMBEDDING_MODEL)
+                for record in batch
+            ]
+        else:
+            vectors = list(embedder.embed([record["text"] for record in batch]))
         points = [
             models.PointStruct(
                 id=next_point_id + offset + index,
-                vector=vector.tolist(),
+                vector=vector if use_cloud_inference else vector.tolist(),
                 payload=record,
             )
             for index, (record, vector) in enumerate(zip(batch, vectors, strict=True))

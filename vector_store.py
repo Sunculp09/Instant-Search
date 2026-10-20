@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+from urllib.parse import urlparse
 
 from dotenv import load_dotenv
 from qdrant_client import QdrantClient
@@ -11,7 +12,8 @@ from qdrant_client import QdrantClient
 
 ROOT = Path(__file__).resolve().parent
 QDRANT_DIR = ROOT / "data" / "qdrant"
-COLLECTION = "playlist_transcripts"
+# The cloud deployment uses this collection for all-MiniLM-L6-v2 vectors.
+COLLECTION = "playlist_transcripts_minilm_v1"
 
 
 def get_qdrant_client() -> QdrantClient:
@@ -28,7 +30,13 @@ def get_qdrant_client() -> QdrantClient:
     if qdrant_url:
         if not qdrant_api_key:
             raise RuntimeError("QDRANT_API_KEY is required when QDRANT_URL is set.")
-        return QdrantClient(url=qdrant_url, api_key=qdrant_api_key, timeout=60)
+        host = urlparse(qdrant_url).hostname or ""
+        return QdrantClient(
+            url=qdrant_url,
+            api_key=qdrant_api_key,
+            timeout=60,
+            cloud_inference=host.endswith(".cloud.qdrant.io"),
+        )
     if qdrant_api_key:
         raise RuntimeError("Set QDRANT_URL together with QDRANT_API_KEY.")
     if mode == "cloud":

@@ -92,12 +92,23 @@ h2 { margin: 6px 0 0; font: 700 18px Manrope, sans-serif; letter-spacing: -.5px;
   .video-frame { aspect-ratio: 16 / 9; }
 }
 
-@media (max-height: 700px) and (min-width: 821px) {
+@media (max-height: 800px) and (min-width: 821px) {
   .topbar { height: 52px; flex-basis: 52px; }
-  .main-layout { padding: 14px 0 18px; gap: 26px; }
-  .left-panel { padding: 18px 28px; }
-  h1 { margin: 12px 0 7px; font-size: clamp(34px, 4vw, 48px); }
-  .search-card { margin-top: 14px; padding: 12px 14px; }
-  .search-card textarea { min-height: 52px; }
+  .main-layout { padding: 10px 0 14px; gap: 26px; }
+  .left-panel { padding: 14px 20px; }
+  h1 { margin: 9px 0 6px; font-size: clamp(34px, 3.5vw, 46px); }
+  .intro { font-size: 12px; line-height: 1.45; }
+  .search-card { margin-top: 12px; padding: 10px 12px; }
+  .search-card label { margin-bottom: 6px; }
+  .search-card textarea { min-height: 44px; padding: 8px 10px; }
+  .form-bottom { margin-top: 8px; }
+  .search-card button { height: 34px; }
+  .status { min-height: 12px; margin-top: 3px; }
+  .results-heading { margin-bottom: 7px; }
+  .answer-card { max-height: 84px; padding: 9px 11px; }
+  .answer-card p { -webkit-line-clamp: 2; }
+  .source-list { grid-template-rows: repeat(5, minmax(31px, 1fr)); gap: 4px; margin-top: 6px; }
+  .source-card { padding: 5px 8px; }
+  .watch-link { height: 27px; }
   .player-panel { padding: 15px; }
 }

@@ -21,8 +21,9 @@ button, textarea { font: inherit; }
 
 .page-shell { width: min(100% - 48px, 1280px); min-height: 100vh; margin: 0 auto; display: flex; flex-direction: column; }
 .site-footer { min-height: 42px; display: flex; align-items: center; justify-content: center; gap: 7px; border-top: 1px solid var(--line); color: var(--muted); font-size: 11px; }
-.site-footer a { color: #6257cf; font-weight: 600; text-decoration: none; }
-.site-footer a:hover { text-decoration: underline; }
+.site-footer a { display: inline-flex; align-items: center; color: #0a66c2; text-decoration: none; transition: opacity .15s; }
+.site-footer a:hover { opacity: .76; }
+.linkedin-icon { display: block; width: 17px; height: 17px; fill: currentColor; }
 .footer-separator { color: #b4b6c4; }
 .topbar { height: 64px; flex: 0 0 64px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--line); }
 .brand { display: inline-flex; align-items: center; gap: 11px; color: var(--ink); text-decoration: none; font: 800 16px Manrope, sans-serif; letter-spacing: -.5px; }

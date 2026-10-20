@@ -94,23 +94,32 @@ def retrieve(question: str, limit: int = 5) -> list[dict[str, Any]]:
             if episode_title.search(str(item.get("video_title", "")))
         ]
 
+    query_terms = [
+        word for word in re.findall(r"[\w]+", question.casefold())
+        if word not in QUERY_STOP_WORDS and len(word) > 1
+    ]
+    broad_topic_query = len(query_terms) <= 2
+
     # Search captions and titles for exact phrases as well as using vector
     # matches. Titles let users target a specific episode directly.
     phrases = exact_query_phrases(question)
     if episode_title and not phrases:
         phrases = [f"episode {episode.group(1)}"]
     if not phrases:
+        if broad_topic_query and query_terms:
+            semantic_matches.sort(
+                key=lambda item: (
+                    all(term in str(item.get("video_title", "")).casefold() for term in query_terms),
+                    item["score"],
+                ),
+                reverse=True,
+            )
         return semantic_matches[:limit]
 
     semantic_by_key = {
         (item.get("video_id"), item.get("start_timestamp"), item.get("text")): item
         for item in semantic_matches
     }
-    query_terms = [
-        word for word in re.findall(r"[\w]+", question.casefold())
-        if word not in QUERY_STOP_WORDS and len(word) > 1
-    ]
-    broad_topic_query = len(query_terms) <= 2
     teaching_cues = ("intro", "introduction", "easy", "algorithm", "explanation", "explained", "basics", "course", "tutorial")
     phrase_matches: list[dict[str, Any]] = []
     for chunk in load_transcript_chunks():
@@ -152,7 +161,8 @@ def retrieve(question: str, limit: int = 5) -> list[dict[str, Any]]:
             per_video[video_id] = per_video.get(video_id, 0) + 1
             if len(selected) >= limit:
                 break
-        return selected
+        if episode_title or any(item["_title_match"] or item["score"] > 0 for item in phrase_matches):
+            return selected
     if episode_title:
         return semantic_matches[:limit]
     return semantic_matches[:limit]

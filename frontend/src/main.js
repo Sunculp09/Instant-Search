@@ -7,7 +7,6 @@ const statementInput = document.querySelector("#statement");
 const submitButton = document.querySelector("#submit-button");
 const status = document.querySelector("#status");
 const results = document.querySelector("#results");
-const answerText = document.querySelector("#answer-text");
 const sourceList = document.querySelector("#sources");
 const sourceCount = document.querySelector("#source-count");
 const videoPlayer = document.querySelector("#video-player");
@@ -117,7 +116,6 @@ form.addEventListener("submit", async (event) => {
     const data = await response.json();
     if (!response.ok) throw new Error(data.detail || "The search request failed.");
 
-    answerText.textContent = data.answer || "No answer was returned.";
     renderSources(data.sources || []);
     results.hidden = false;
     status.textContent = "";

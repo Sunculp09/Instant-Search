@@ -20,6 +20,7 @@ from vector_store import COLLECTION, get_qdrant_client
 
 ROOT = Path(__file__).resolve().parent
 EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
+MIN_RELEVANCE_SCORE = 0.52
 QUERY_STOP_WORDS = {
     "a", "an", "and", "are", "at", "does", "find", "for", "from", "how", "in",
     "is", "me", "of", "on", "or", "please", "show", "tell", "that", "the", "this",
@@ -79,7 +80,7 @@ def retrieve(question: str, limit: int = 5) -> list[dict[str, Any]]:
     semantic_matches = [
         {**(point.payload or {}), "score": point.score}
         for point in results
-        if point.payload
+        if point.payload and point.score >= MIN_RELEVANCE_SCORE
     ]
 
     # Vector similarity can miss a rare but important exact topic phrase. Search
@@ -110,6 +111,11 @@ def retrieve(question: str, limit: int = 5) -> list[dict[str, Any]]:
         )
 
     if phrase_matches:
+        phrase_matches = [
+            item for item in phrase_matches
+            if item["score"] >= MIN_RELEVANCE_SCORE
+        ]
+    if phrase_matches:
         phrase_matches.sort(key=lambda item: (len(item["_matched_phrase"]), item["score"]), reverse=True)
         return [{key: value for key, value in item.items() if key != "_matched_phrase"} for item in phrase_matches[:limit]]
     return semantic_matches[:limit]
@@ -118,7 +124,14 @@ def retrieve(question: str, limit: int = 5) -> list[dict[str, Any]]:
 def answer_with_sources(question: str, limit: int = 5) -> dict[str, Any]:
     matches = retrieve(question, limit)
     if not matches:
-        return {"answer": "I could not find a matching topic in the indexed captions.", "sources": []}
+        return {
+            "answer": (
+                "No relevant clip matched the indexed captions. The current index "
+                "covers 53 playlist videos, so this topic may be in a video whose "
+                "transcript is not indexed."
+            ),
+            "sources": [],
+        }
 
     load_dotenv(ROOT / ".env")
     api_key = os.getenv("GROQ_API_KEY")

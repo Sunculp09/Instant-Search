@@ -21,26 +21,9 @@ You need:
 
 Keep secret keys in service environment settings or the local `.env` file. Never put them in frontend files or commit them to Git.
 
-## 1. Upload vectors to Qdrant Cloud
+## 1. Deploy the backend to Render
 
-Add the Qdrant Cloud URL and key to the project's local `.env`:
-
-```text
-QDRANT_URL=https://your-cluster-url.qdrant.io
-QDRANT_API_KEY=your-qdrant-api-key
-```
-
-From this project folder, run:
-
-```powershell
-uv run python create_vector_db.py --rebuild
-```
-
-This reads `knowledge.json` and uploads the embeddings to the configured Qdrant collection. It does not delete your local transcript JSON.
-
-## 2. Deploy the backend to Render
-
-Push this project to your Git provider. In Render, create a **Blueprint** from that repository; it will read `render.yaml`.
+Push this project to your Git provider. In Render, create a **Blueprint** from that repository; it will read `render.yaml`. The build installs the Python packages and indexes `knowledge.json` into Qdrant Cloud. The Qdrant URL and key must be available in Render during the build.
 
 Set these values in the Render service environment:
 
@@ -53,7 +36,7 @@ Set these values in the Render service environment:
 
 When the service is live, open its `/health` address. It should return `{"status":"ok"}`. `/docs` shows the API documentation.
 
-## 3. Deploy the frontend to Vercel
+## 2. Deploy the frontend to Vercel
 
 Import the same repository into Vercel and set **Root Directory** to `frontend`. The included `frontend/vercel.json` selects the Vite build and output folder.
 
